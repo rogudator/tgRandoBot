@@ -20,8 +20,13 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
 	}
-	log.Println(os.Getenv("ID_TOKEN"))
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("ID_TOKEN"))
+	token, found := os.LookupEnv("ID_TOKEN")
+	if found {
+		log.Println("Token is found")
+	} else {
+		log.Println("Token is not found")
+	}
+	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -53,7 +58,7 @@ func main() {
 			txt := fmt.Sprintf(link, channelName, rand.Intn(maxIdMessage))
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, txt)
 		} else {
-			msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
+			//msg.ReplyMarkup = tgbotapi.NewRemoveKeyboard(true)
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Привет! Чтобы получить случайный пост с канала, сделай форвард из него в этот бот.")
 		}
 
