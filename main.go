@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -45,9 +46,13 @@ func main() {
 	updates := bot.GetUpdatesChan(u)
 
 	// This block is needed to generate link like t.me/{channelName}/{randomNumberBetween{0}and{MaxIdMessage}}
-	channelName := ""
-	maxIdMessage := 0
 	link := "t.me/%s/%d"
+	// This map is needed to remember which channel did user forward previously
+	var userAndChannelName sync.Map
+	// This map is needed to remember the id of post user forwarded previously
+	var userAndmaxIdMessage sync.Map
+	// In the long run, if the number of user grow too big. It will be a better
+	// idea to store this information in database.
 
 	for update := range updates {
 		if update.Message == nil { // ignore non-Message updates
@@ -59,15 +64,33 @@ func main() {
 		// if user forwarded message from channel, we extract channel's @ and the id of forwarded message
 		// then we generate link and put it in txt value
 		if update.Message.ForwardFromChat != nil {
-			channelName = update.Message.ForwardFromChat.UserName
-			maxIdMessage = update.Message.ForwardFromMessageID
+			userId := update.Message.Chat.ID
+			channelName := update.Message.ForwardFromChat.UserName
+			maxIdMessage := update.Message.ForwardFromMessageID
+			userAndChannelName.Store(userId, channelName)
+			userAndmaxIdMessage.Store(userId, maxIdMessage)
 			txt := fmt.Sprintf(link, channelName, rand.Intn(maxIdMessage))
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, txt)
+			msg = tgbotapi.NewMessage(userId, txt)
 			msg.ReplyMarkup = numericKeyboard
 		} else if update.Message.Text == "еще!" {
 			// if user wants another random message, he sends "more" message and we repeat the generating of link
-			txt := fmt.Sprintf(link, channelName, rand.Intn(maxIdMessage))
-			msg = tgbotapi.NewMessage(update.Message.Chat.ID, txt)
+			txt := ""
+			userId := update.Message.Chat.ID
+			channelName, channelOk := userAndChannelName.Load(userId)
+			maxIdMessageAny, maxIdMessageOk := userAndmaxIdMessage.Load(userId)
+			if !channelOk || !maxIdMessageOk {
+				txt = "Чтобы получить случайный пост с канала, сделай форвард из него в этот бот."
+				msg = tgbotapi.NewMessage(update.Message.Chat.ID, txt)
+			} else {
+				maxIdMessage, ok := maxIdMessageAny.(int)
+				if !ok {
+					log.Println("Error when type asserting the maxIdMessage")
+					updates.Clear()
+					continue;
+				}
+				txt = fmt.Sprintf(link, channelName, rand.Intn(maxIdMessage))
+				msg = tgbotapi.NewMessage(update.Message.Chat.ID, txt)
+			}
 		} else {
 			// if he does not send forward, we kindly remind user to do so
 			msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Привет! Чтобы получить случайный пост с канала, сделай форвард из него в этот бот.")
