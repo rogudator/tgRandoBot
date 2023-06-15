@@ -20,7 +20,7 @@ var numericKeyboard = tgbotapi.NewReplyKeyboard(
 func main() {
 	// Load the .env file, which contains the token
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		log.Fatal("No .env file found")
 	}
 	// Check if .env has ID_TOKEN field
 	token, found := os.LookupEnv("ID_TOKEN")
@@ -28,7 +28,7 @@ func main() {
 	if found {
 		log.Println("Token is found")
 	} else {
-		log.Println("Token is not found")
+		log.Fatal("Token is not found")
 	}
 	// Set up bot with token
 	bot, err := tgbotapi.NewBotAPI(token)
