@@ -141,7 +141,6 @@ func main() {
 			if err == nil {
 				forwardIsNotSent = false
 			}
-			log.Println(postID)
 		}
 		var msg tgbotapi.MessageConfig
 		msg.Text = "Another post?"
